@@ -1,0 +1,78 @@
+####################################################################################################################
+####################################################################################################################
+####################################################################################################################
+
+### Loading Single-cell data from various formats and converting into Seurat object: examples
+
+####################################################################################################################
+####################################################################################################################
+####################################################################################################################
+
+setwd("/mnt/RAID/My-Folder/PROJECT-COVID")
+
+library(Seurat)
+library(plyr)
+library(dplyr)
+library(cowplot)
+library(ggplot2)
+library(patchwork)
+library(Matrix)
+library(data.table)
+library(tidyr)
+library(ggpubr)
+library(tidyverse)
+library(RColorBrewer)
+library(writexl)
+library(SeuratDisk)
+
+########  (A) Loading scRNA-seq data with RNA alone and regular 10X Genomics data (folder with 3 files inside: genes, barcodes, matrix)
+########  DATASET ---------------------------------MENDELEY - Wang, et al 2023  -------------------------------------------#######
+########  DATASET ---------------------------------MENDELEY - Wang, et al 2023  -------------------------------------------#######
+########  DATASET ---------------------------------MENDELEY - Wang, et al 2023  -------------------------------------------#######
+
+#Read scRNAseq expression data
+S1.data <- Read10X(data.dir = "/mnt/KNAS1/VINCENT_BOTH/vincent/PROJECT-GUT/Mendeley-Wang2023/S1_Duo_EPI")
+#Create Seurat object
+S1 <- CreateSeuratObject(counts = S1.data, project = "S1", min.cells = 3, min.features = 200)
+#Standard pre-processing workflow
+S1[["percent.mt"]] <- PercentageFeatureSet(S1, pattern = "^MT-")
+# Visualize QC metrics as a violin plot
+VlnPlot(S1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+S1 <- subset(S1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & nCount_RNA < 20000  & percent.mt < 15 & percent.hb < 5)
+dim(S1)
+rm(S1.data)
+
+###### (B) Loading multi-modal single-cell data with (e.g. combined RNA + protein expression)
+######  DATASET ---------------------------- GSE185224 - Burclaff et al  --------------------------------------#####
+######  DATASET ---------------------------- GSE185224 - Burclaff et al  --------------------------------------#####
+######  DATASET ---------------------------- GSE185224 - Burclaff et al  --------------------------------------#####
+
+#Read scRNAseq expression data
+D1.data <- Read10X_h5(file = "GSE185224-Burclaff2022/D1/D1.h5", use.names = TRUE, unique.features = TRUE)
+rownames(x = D1.data[["Antibody Capture"]]) <- gsub(pattern = "_[control_]*TotalSeqB", replacement = "", x = rownames(x = D1.data[["Antibody Capture"]]))
+#Create Seurat object
+D1 <- CreateSeuratObject(counts = D1.data[["Gene Expression"]], project = "D1", min.cells = 3, min.features = 200)
+D1
+#Standard pre-processing workflow
+D1[["percent.mt"]] <- PercentageFeatureSet(D1, pattern = "^MT-")
+VlnPlot(D1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"))
+D1 <- subset(D1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & nCount_RNA < 20000  & percent.mt < 15 & percent.hb < 5)
+rm(D1.data)
+
+######  (C) Loading single-cell data in .h5ad format -- First, convert to .h5seurat, next load as Seurat object
+######  DATASET ----------------------------Gut Cell Atlas - Elmentaite, et al 2021  --------------------------------------#####
+######  DATASET ----------------------------Gut Cell Atlas - Elmentaite, et al 2021  --------------------------------------#####
+######  DATASET ----------------------------Gut Cell Atlas - Elmentaite, et al 2021  --------------------------------------#####
+# https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-load.html
+
+library(SeuratDisk) # Need this library to convert Anndata (h5ad file) to h5seurat
+
+# This creates a copy of this .h5ad object reformatted into .h5seurat inside the example_dir directory
+Convert("GCA-Elmentaite2021/Full_obj_raw_counts_nosoupx_v2.h5ad", dest = "h5seurat", overwrite = TRUE)
+
+# This .h5seurat object can then be read in manually 
+Seurat <- LoadH5Seurat("GCA-Elmentaite2021/Full_obj_raw_counts_nosoupx_v2.h5seurat", "counts") 
+Seurat
+
+
+
